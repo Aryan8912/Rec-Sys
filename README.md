@@ -71,12 +71,4 @@ streamlit run app/streamlit_app.py
 
 Full methodology, architecture diagrams, and honest discussion of why the
 deep models don't outperform Item-CF on this dataset are in
-`docs/DOCUMENTATION.md`.
-
-## Notes on scope
-
-The core code (`data_pipeline.py`, `models/*.py`) is written to be
-domain-agnostic — any dataset reducible to `(user_id, item_id, event,
-timestamp)` can be loaded without changing model code. Only the movies
-domain has actually been trained and deployed; this is not a claim that
-other domains are live.
+`DOCUMENTATION.md`.
