@@ -44,3 +44,17 @@ class MatrixFactorization(BaseRecommender):
 
     def score(self, u, candidate_items):
         return self.Q[candidate_items] @ self.P[u]
+
+    def recommend_for_items(self, liked_items, k, exclude=None):
+        exclude = exclude or set()
+        if not liked_items:
+            pseudo_user = np.zeros(self.n_factors)
+        else:
+            pseudo_user = self.Q[list(liked_items)].mean(axis=0)
+        scores = self.Q @ pseudo_user
+        exclude_all = set(exclude) | set(liked_items)
+        if exclude_all:
+            scores = scores.copy()
+            scores[list(exclude_all)] = -np.inf
+        top_k = np.argpartition(-scores, k)[:k]
+        return top_k[np.argsort(-scores[top_k])]

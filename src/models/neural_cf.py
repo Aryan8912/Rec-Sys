@@ -97,6 +97,47 @@ class NeuralCFRecommender(BaseRecommender):
         order = np.argsort(-scores)[:k]
         return np.array(candidate_items)[order]
 
+    def recommend_for_items(self, liked_items, k, exclude=None):
+        exclude = exclude or set()
+        self.net.eval()
+        with torch.no_grad():
+            if not liked_items:
+                pseudo_user_vec = torch.zeros(1, self.net.item_embedding.embedding_dim)
+            else:
+                liked_idx = torch.tensor(list(liked_items), dtype=torch.long)
+                pseudo_user_vec = self.net.item_embedding(liked_idx).mean(dim=0, keepdim=True)
+
+            all_items = torch.arange(self.n_items, dtype=torch.long)
+            item_vecs = self.net.item_embedding(all_items)
+            u_batch = pseudo_user_vec.expand(self.n_items, -1)
+            x = torch.cat([u_batch, item_vecs], dim=-1)
+            scores = self.net.mlp(x).squeeze(-1).numpy()
+
+        exclude_all = set(exclude) | set(liked_items)
+        if exclude_all:
+            scores = scores.copy()
+            scores[list(exclude_all)] = -np.inf
+        top_k = np.argpartition(-scores, k)[:k]
+        return top_k[np.argsort(-scores[top_k])]
+
+    def rerank_for_items(self, liked_items, candidate_items, k):
+        self.net.eval()
+        with torch.no_grad():
+            if not liked_items:
+                pseudo_user_vec = torch.zeros(1, self.net.item_embedding.embedding_dim)
+            else:
+                liked_idx = torch.tensor(list(liked_items), dtype=torch.long)
+                pseudo_user_vec = self.net.item_embedding(liked_idx).mean(dim=0, keepdim=True)
+
+            cand_idx = torch.tensor(candidate_items, dtype=torch.long)
+            item_vecs = self.net.item_embedding(cand_idx)
+            u_batch = pseudo_user_vec.expand(len(candidate_items), -1)
+            x = torch.cat([u_batch, item_vecs], dim=-1)
+            scores = self.net.mlp(x).squeeze(-1).numpy()
+
+        order = np.argsort(-scores)[:k]
+        return np.array(candidate_items)[order]
+
 
 if __name__ == '__main__':
     import sys

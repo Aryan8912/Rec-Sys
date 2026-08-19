@@ -54,7 +54,6 @@ class TwoTowerRecommender(BaseRecommender):
                 idx = perm[start:start + self.batch_size]
                 u_batch = users[idx]
                 i_batch = items[idx]
-                # sample one negative item per positive
                 j_batch = torch.tensor(
                     [self._sample_neg(rng, u.item(), n_items, user_pos) for u in u_batch],
                     dtype=torch.long)
@@ -71,7 +70,6 @@ class TwoTowerRecommender(BaseRecommender):
                 n_batches += 1
             print(f'  TwoTower epoch {epoch+1}/{self.epochs}, avg BPR loss: {total_loss/n_batches:.4f}')
 
-        # precompute all item embeddings once for fast scoring/retrieval
         self.net.eval()
         with torch.no_grad():
             all_item_ids = torch.arange(n_items, dtype=torch.long)
@@ -94,3 +92,19 @@ class TwoTowerRecommender(BaseRecommender):
     def score(self, u, candidate_items):
         user_vec = self.get_user_embedding(u)
         return self.item_embeddings[candidate_items] @ user_vec
+
+    def get_pseudo_user_embedding(self, liked_items):
+        if not liked_items:
+            return np.zeros(self.embedding_dim)
+        return self.item_embeddings[list(liked_items)].mean(axis=0)
+
+    def recommend_for_items(self, liked_items, k, exclude=None):
+        exclude = exclude or set()
+        pseudo_user = self.get_pseudo_user_embedding(liked_items)
+        scores = self.item_embeddings @ pseudo_user
+        exclude_all = set(exclude) | set(liked_items)
+        if exclude_all:
+            scores = scores.copy()
+            scores[list(exclude_all)] = -np.inf
+        top_k = np.argpartition(-scores, k)[:k]
+        return top_k[np.argsort(-scores[top_k])]

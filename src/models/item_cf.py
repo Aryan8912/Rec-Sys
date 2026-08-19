@@ -16,7 +16,7 @@ class ItemItemCF(BaseRecommender):
         norms = np.sqrt(R.power(2).sum(axis=0)).A1
         norms[norms == 0] = 1e-9
         R_norm = R.multiply(1.0 / norms)
-        dense_sim = (R_norm.T @ R_norm).toarray()  
+        dense_sim = (R_norm.T @ R_norm).toarray() 
         np.fill_diagonal(dense_sim, 0)
 
         k = min(self.top_k, n_items - 1)
@@ -39,3 +39,18 @@ class ItemItemCF(BaseRecommender):
             return np.zeros(len(candidate_items))
         sub = self.item_sim[candidate_items][:, user_items]
         return np.asarray(sub.sum(axis=1)).ravel()
+
+    def recommend_for_items(self, liked_items, k, exclude=None):
+        exclude = exclude or set()
+        all_items = np.arange(self.n_items)
+        if not liked_items:
+            scores = np.zeros(self.n_items)
+        else:
+            sub = self.item_sim[all_items][:, list(liked_items)]
+            scores = np.asarray(sub.sum(axis=1)).ravel()
+        exclude_all = set(exclude) | set(liked_items)
+        if exclude_all:
+            scores = scores.copy()
+            scores[list(exclude_all)] = -np.inf
+        top_k = np.argpartition(-scores, k)[:k]
+        return top_k[np.argsort(-scores[top_k])]

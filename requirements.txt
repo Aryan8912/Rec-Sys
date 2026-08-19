@@ -3,5 +3,7 @@ numpy==2.5.2
 pandas==3.0.5
 scipy==1.18.0
 torch==2.13.0
+torchvision
 faiss-cpu==1.15.0
 huggingface_hub==1.28.0
+sentence-transformers==6.0.0

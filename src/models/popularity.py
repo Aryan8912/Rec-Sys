@@ -13,3 +13,11 @@ class PopularityRecommender(BaseRecommender):
 
     def score(self, u, candidate_items):
         return self.pop_scores[candidate_items]
+
+    def recommend_for_items(self, liked_items, k, exclude=None):
+        exclude = exclude or set()
+        scores = self.pop_scores.copy()
+        if exclude:
+            scores[list(exclude)] = -np.inf
+        top_k = np.argpartition(-scores, k)[:k]
+        return top_k[np.argsort(-scores[top_k])]
